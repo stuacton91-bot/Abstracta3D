@@ -3,7 +3,7 @@ import { Stage, Layer, Transformer, Image as KonvaImage, Rect } from 'react-konv
 import Konva from 'konva';
 import { useAppStore } from '../store/useAppStore';
 import type { CustomShape, CanvasObject } from '../store/useAppStore';
-import { Trash2, Download, ArrowUp, ArrowDown, Copy, FlipHorizontal, FlipVertical, RotateCcw, Upload, Save, Activity, Mic, MicOff } from 'lucide-react';
+import { Trash2, Download, ArrowUp, ArrowDown, Copy, FlipHorizontal, FlipVertical, RotateCcw, Upload, Save, Activity, Mic, MicOff, Undo2, Redo2 } from 'lucide-react';
 import { audioAnalyzer } from '../lib/audioAnalyzer';
 import { createSVGDataUrl } from '../utils/svgGenerator';
 import useImage from 'use-image';
@@ -207,6 +207,17 @@ const CanvasStudio: React.FC = () => {
   const canvasColor = useAppStore(state => state.canvasColor);
   const setCanvasColor = useAppStore(state => state.setCanvasColor);
   
+  const saveHistoryState = useAppStore(state => state.saveHistoryState);
+  const undo = useAppStore(state => state.undo);
+  const redo = useAppStore(state => state.redo);
+  const history = useAppStore(state => state.history);
+  const future = useAppStore(state => state.future);
+
+  const handleAddObj = (obj: CanvasObject) => { saveHistoryState(); addCanvasObject(obj); };
+  const handleUpdateObj = (id: string, updates: Partial<CanvasObject>) => { saveHistoryState(); updateCanvasObject(id, updates); };
+  const handleRemoveObj = (id: string) => { saveHistoryState(); removeCanvasObject(id); };
+  const handleSetAllObjs = (objs: CanvasObject[]) => { saveHistoryState(); setCanvasObjects(objs); };
+
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const trRef = useRef<Konva.Transformer>(null);
@@ -274,7 +285,7 @@ const CanvasStudio: React.FC = () => {
         scaleY: 1,
         rotation: 0,
       };
-      addCanvasObject(newObj);
+      handleAddObj(newObj);
       setSelectedId(newObj.id);
     }
     setDraggedShapeId(null);
@@ -305,10 +316,10 @@ const CanvasStudio: React.FC = () => {
     const newObjects = [...canvasObjects];
     if (direction === 'up' && index < newObjects.length - 1) {
       [newObjects[index], newObjects[index + 1]] = [newObjects[index + 1], newObjects[index]];
-      setCanvasObjects(newObjects);
+      handleSetAllObjs(newObjects);
     } else if (direction === 'down' && index > 0) {
       [newObjects[index], newObjects[index - 1]] = [newObjects[index - 1], newObjects[index]];
-      setCanvasObjects(newObjects);
+      handleSetAllObjs(newObjects);
     }
   };
 
@@ -317,14 +328,14 @@ const CanvasStudio: React.FC = () => {
     const objToCopy = canvasObjects.find(o => o.id === selectedId);
     if (objToCopy) {
       const newObj = { ...objToCopy, id: crypto.randomUUID(), x: objToCopy.x + 40, y: objToCopy.y + 40 };
-      addCanvasObject(newObj);
+      handleAddObj(newObj);
       setSelectedId(newObj.id);
     }
   };
 
   const handleDelete = () => {
     if (!selectedId) return;
-    removeCanvasObject(selectedId);
+    handleRemoveObj(selectedId);
     setSelectedId(null);
   };
 
@@ -437,9 +448,13 @@ const CanvasStudio: React.FC = () => {
       {/* Canvas */}
       <div className="flex-1 relative bg-black overflow-hidden flex flex-col">
         <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-neutral-800/90 backdrop-blur-md px-4 py-2 rounded-full border border-neutral-700 shadow-xl flex items-center gap-2 z-20">
+          <button onClick={undo} disabled={history.length === 0} className="p-2 text-neutral-400 hover:text-white disabled:opacity-30" title="Undo"><Undo2 size={18} /></button>
+          <button onClick={redo} disabled={future.length === 0} className="p-2 text-neutral-400 hover:text-white disabled:opacity-30" title="Redo"><Redo2 size={18} /></button>
+          <div className="w-px h-6 bg-neutral-600 mx-1"></div>
+          
           <button onClick={() => {
             if(window.confirm('Clear all shapes from the canvas?')) {
-              setCanvasObjects([]);
+              handleSetAllObjs([]);
               setSelectedId(null);
             }
           }} className="p-2 text-red-500 hover:text-red-400" title="Clear Entire Canvas"><RotateCcw size={18} /></button>
@@ -482,7 +497,7 @@ const CanvasStudio: React.FC = () => {
                       shape={shapeDef}
                       isSelected={obj.id === selectedId}
                       onSelect={() => setSelectedId(obj.id)}
-                      onChange={(newAttrs) => updateCanvasObject(obj.id, newAttrs)}
+                      onChange={(newAttrs) => handleUpdateObj(obj.id, newAttrs)}
                     />
                   );
                 })}
@@ -519,13 +534,13 @@ const CanvasStudio: React.FC = () => {
             <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3 block">Orientation</label>
             <div className="grid grid-cols-2 gap-2">
               <button 
-                onClick={() => updateCanvasObject(selectedId, { scaleX: selectedObj.scaleX * -1 })}
+                onClick={() => handleUpdateObj(selectedId, { scaleX: selectedObj.scaleX * -1 })}
                 className="py-2 bg-neutral-900 border border-neutral-800 rounded-md hover:bg-neutral-800 transition-colors flex items-center justify-center gap-2 text-sm"
               >
                 <FlipHorizontal size={16} /> Flip X
               </button>
               <button 
-                onClick={() => updateCanvasObject(selectedId, { scaleY: selectedObj.scaleY * -1 })}
+                onClick={() => handleUpdateObj(selectedId, { scaleY: selectedObj.scaleY * -1 })}
                 className="py-2 bg-neutral-900 border border-neutral-800 rounded-md hover:bg-neutral-800 transition-colors flex items-center justify-center gap-2 text-sm"
               >
                 <FlipVertical size={16} /> Flip Y
@@ -543,7 +558,7 @@ const CanvasStudio: React.FC = () => {
               {(['none', 'float', 'pulse', 'spin', 'orbit'] as const).map((b) => (
                 <button
                   key={b}
-                  onClick={() => updateCanvasObject(selectedId, { behavior: b })}
+                  onClick={() => handleUpdateObj(selectedId, { behavior: b })}
                   className={`py-2 border rounded-md text-sm capitalize transition-colors ${
                     (selectedObj.behavior || 'none') === b 
                       ? 'bg-blue-600 border-blue-500 text-white' 
@@ -563,7 +578,7 @@ const CanvasStudio: React.FC = () => {
               <Mic size={14} /> React to Sound
             </label>
             <button
-              onClick={() => updateCanvasObject(selectedId, { audioReactive: !selectedObj.audioReactive })}
+              onClick={() => handleUpdateObj(selectedId, { audioReactive: !selectedObj.audioReactive })}
               className={`w-12 h-6 rounded-full transition-colors relative ${selectedObj.audioReactive ? 'bg-pink-500' : 'bg-neutral-800'}`}
             >
               <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${selectedObj.audioReactive ? 'translate-x-7' : 'translate-x-1'}`}></div>
@@ -574,7 +589,7 @@ const CanvasStudio: React.FC = () => {
 
           <EffectPanel 
             effect={selectedObj.overrideEffect || selectedShapeDef.effect} 
-            onChange={(newEffect) => updateCanvasObject(selectedId, { overrideEffect: newEffect })} 
+            onChange={(newEffect) => handleUpdateObj(selectedId, { overrideEffect: newEffect })} 
             className="flex-1"
           />
         </div>

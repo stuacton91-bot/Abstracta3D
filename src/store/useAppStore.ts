@@ -58,6 +58,12 @@ interface AppState {
 
   canvasColor: string;
   setCanvasColor: (color: string) => void;
+
+  history: CanvasObject[][];
+  future: CanvasObject[][];
+  saveHistoryState: () => void;
+  undo: () => void;
+  redo: () => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -130,6 +136,57 @@ export const useAppStore = create<AppState>()(
         firebaseSet(ref(db, `rooms/${state.roomId}/canvasColor`), color);
       } else {
         set({ canvasColor: color });
+      }
+    },
+
+    history: [],
+    future: [],
+    saveHistoryState: () => {
+      const state = get();
+      const newHistory = [...state.history, [...state.canvasObjects]];
+      // keep only the last 3 steps
+      if (newHistory.length > 3) newHistory.shift();
+      set({ history: newHistory, future: [] });
+    },
+    undo: () => {
+      const state = get();
+      if (state.history.length === 0) return;
+      const newHistory = [...state.history];
+      const previousState = newHistory.pop()!;
+      const newFuture = [state.canvasObjects, ...state.future];
+      // Keep only 3 future steps
+      if (newFuture.length > 3) newFuture.pop();
+      set({ history: newHistory, future: newFuture });
+      
+      // sync to firebase
+      if (state.roomId) {
+        if (previousState.length === 0) {
+          firebaseSet(ref(db, `rooms/${state.roomId}/canvasObjects`), null);
+        } else {
+          const objMap: Record<string, CanvasObject> = {};
+          previousState.forEach(o => objMap[o.id] = o);
+          firebaseSet(ref(db, `rooms/${state.roomId}/canvasObjects`), objMap);
+        }
+      }
+    },
+    redo: () => {
+      const state = get();
+      if (state.future.length === 0) return;
+      const newFuture = [...state.future];
+      const nextState = newFuture.shift()!;
+      const newHistory = [...state.history, state.canvasObjects];
+      if (newHistory.length > 3) newHistory.shift();
+      set({ history: newHistory, future: newFuture });
+      
+      // sync to firebase
+      if (state.roomId) {
+        if (nextState.length === 0) {
+          firebaseSet(ref(db, `rooms/${state.roomId}/canvasObjects`), null);
+        } else {
+          const objMap: Record<string, CanvasObject> = {};
+          nextState.forEach(o => objMap[o.id] = o);
+          firebaseSet(ref(db, `rooms/${state.roomId}/canvasObjects`), objMap);
+        }
       }
     }
   })
