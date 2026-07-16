@@ -10,7 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
+    "@react-three/postprocessing": "^3.0.4",
     "@tailwindcss/vite": "^4.3.3",
+    "@types/three": "^0.185.1",
     "autoprefixer": "^10.5.4",
     "firebase": "^12.16.0",
     "konva": "^10.3.0",
@@ -21,6 +25,7 @@
     "react-konva": "^19.2.5",
     "react-router-dom": "^7.18.1",
     "tailwindcss": "^4.3.3",
+    "three": "^0.185.1",
     "use-image": "^1.1.4",
     "zustand": "^5.0.14"
   },
