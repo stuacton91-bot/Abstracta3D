@@ -8,6 +8,7 @@ import { audioAnalyzer } from '../lib/audioAnalyzer';
 import { createSVGDataUrl } from '../utils/svgGenerator';
 import useImage from 'use-image';
 import { EffectPanel } from '../components/EffectPanel';
+import { AlgorithmicBrushes } from '../components/AlgorithmicBrushes';
 
 // --- Shape Thumbnail (Sidebar) ---
 const ShapeThumbnail: React.FC<{ shape: CustomShape }> = ({ shape }) => {
@@ -442,6 +443,12 @@ const CanvasStudio: React.FC = () => {
               ))}
             </div>
           )}
+          
+          <AlgorithmicBrushes 
+            canvasWidth={stageSize.width} 
+            canvasHeight={stageSize.height} 
+            selectedShapeId={selectedObj?.shapeId || null} 
+          />
         </div>
       </div>
       
