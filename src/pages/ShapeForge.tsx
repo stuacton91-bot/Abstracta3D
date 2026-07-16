@@ -1,0 +1,339 @@
+import React, { useState, useRef } from 'react';
+import { useAppStore } from '../store/useAppStore';
+import type { Point, ShapeEffect } from '../store/useAppStore';
+import { RefreshCw, CheckCircle2, Hexagon, Star, Sparkles, Droplets, Wand2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { getShapeSvgAttributes, generatePathString } from '../utils/svgGenerator';
+import { palettes } from '../store/palettes';
+import { EffectPanel } from '../components/EffectPanel';
+
+const ShapeForge: React.FC = () => {
+  const [points, setPoints] = useState<Point[]>([]);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [symmetry, setSymmetry] = useState(1);
+  const [prompt, setPrompt] = useState('');
+  const [effect, setEffect] = useState<ShapeEffect>({
+    type: 'aberration',
+    colors: palettes[0].meshStops,
+    opacity: 0.8,
+    intensity: 1.5,
+  });
+  
+  const svgRef = useRef<SVGSVGElement>(null);
+  const addShape = useAppStore(state => state.addShapeToLibrary);
+  const navigate = useNavigate();
+
+  const getCoordinates = (e: React.PointerEvent<SVGSVGElement>): Point | null => {
+    if (!svgRef.current) return null;
+    const CTM = svgRef.current.getScreenCTM();
+    if (!CTM) return null;
+    return {
+      x: (e.clientX - CTM.e) / CTM.a,
+      y: (e.clientY - CTM.f) / CTM.d
+    };
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    (e.target as Element).releasePointerCapture(e.pointerId);
+    const coords = getCoordinates(e);
+    if (coords) {
+      setPoints([coords]);
+      setIsDrawing(true);
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!isDrawing) return;
+    const coords = getCoordinates(e);
+    if (coords) {
+      setPoints((prev) => {
+        const last = prev[prev.length - 1];
+        if (last) {
+          const dx = coords.x - last.x;
+          const dy = coords.y - last.y;
+          if (Math.sqrt(dx * dx + dy * dy) < 5) return prev;
+        }
+        return [...prev, coords];
+      });
+    }
+  };
+
+  const handlePointerUp = () => {
+    if (isDrawing) {
+      setIsDrawing(false);
+      if (symmetry > 1 && points.length > 2) {
+        const newPts: Point[] = [];
+        for (let s = 0; s < symmetry; s++) {
+          const angle = (s * 2 * Math.PI) / symmetry;
+          const cos = Math.cos(angle);
+          const sin = Math.sin(angle);
+          
+          points.forEach(p => {
+            const tx = p.x - cx;
+            const ty = p.y - cy;
+            const rx = tx * cos - ty * sin;
+            const ry = tx * sin + ty * cos;
+            newPts.push({ x: rx + cx, y: ry + cy });
+          });
+          newPts.push({ x: -999999, y: -999999 });
+        }
+        setPoints(newPts);
+      }
+    }
+  };
+
+  const clearCanvas = () => {
+    setPoints([]);
+    setIsDrawing(false);
+  };
+
+  const handleSave = () => {
+    if (points.length < 3 || isDrawing) return;
+    
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    points.forEach(p => {
+      if (p.x === -999999 || p.y === -999999) return;
+      if (p.x < minX) minX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y > maxY) maxY = p.y;
+    });
+    
+    const cxObj = (minX + maxX) / 2;
+    const cyObj = (minY + maxY) / 2;
+    
+    const centeredPoints = points.map(p => ({
+      x: p.x === -999999 ? -999999 : p.x - cxObj,
+      y: p.y === -999999 ? -999999 : p.y - cyObj
+    }));
+
+    addShape({
+      id: crypto.randomUUID(),
+      points: centeredPoints,
+      effect: { ...effect }
+    });
+    
+    navigate('/studio');
+  };
+
+  // --- Procedural Generators ---
+  const cx = 200; // rough center of the preview window
+  const cy = 200;
+  
+  const handleGeneratePolygon = (sides: number) => {
+    const pts: Point[] = [];
+    const radius = 100;
+    for (let i = 0; i < sides; i++) {
+      const angle = (i * 2 * Math.PI) / sides - Math.PI / 2;
+      pts.push({ x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius });
+    }
+    setPoints(pts);
+    setIsDrawing(false);
+  };
+
+  const handleGenerateStar = (pointsCount: number) => {
+    const pts: Point[] = [];
+    const outer = 120;
+    const inner = 50;
+    for (let i = 0; i < pointsCount * 2; i++) {
+      const radius = i % 2 === 0 ? outer : inner;
+      const angle = (i * Math.PI) / pointsCount - Math.PI / 2;
+      pts.push({ x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius });
+    }
+    setPoints(pts);
+    setIsDrawing(false);
+  };
+
+  const handleGenerateBlob = () => {
+    const pts: Point[] = [];
+    const segments = 48; // Smoothness
+    const baseRadius = 90;
+    const seedA = Math.random() * 100;
+    const seedB = Math.random() * 100;
+    for (let i = 0; i < segments; i++) {
+      const angle = (i * 2 * Math.PI) / segments;
+      const noise = Math.sin(angle * 3 + seedA) * 20 + Math.cos(angle * 5 - seedB) * 15;
+      const radius = baseRadius + noise;
+      pts.push({ x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius });
+    }
+    setPoints(pts);
+    setIsDrawing(false);
+  };
+
+  const handleGenerateWaveRing = () => {
+    const pts: Point[] = [];
+    const segments = 100;
+    for (let i = 0; i < segments; i++) {
+      const angle = (i * 2 * Math.PI) / segments;
+      const radius = 90 + Math.sin(angle * 12) * 20; // 12 spikes
+      pts.push({ x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius });
+    }
+    setPoints(pts);
+    setIsDrawing(false);
+  };
+
+  const handleGenerateAIPalette = () => {
+    if (!prompt.trim()) return;
+    
+    // Deterministic hash string -> number
+    let hash = 0;
+    for (let i = 0; i < prompt.length; i++) {
+      hash = prompt.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    // Generate OKLCH values based on hash
+    // Lightness 0.6-0.8, Chroma 0.15-0.3, Hue 0-360
+    const h1 = Math.abs(hash % 360);
+    const h2 = (h1 + 120 + (hash % 30)) % 360; // Triadic ish
+    const h3 = (h1 + 240 - (hash % 30)) % 360;
+    
+    const l1 = 0.6 + (Math.abs(hash) % 20) / 100;
+    const l2 = 0.6 + (Math.abs(hash >> 1) % 20) / 100;
+    const l3 = 0.6 + (Math.abs(hash >> 2) % 20) / 100;
+
+    const c1 = 0.15 + (Math.abs(hash >> 3) % 15) / 100;
+    
+    setEffect({
+      ...effect,
+      colors: [
+        `oklch(${l1} ${c1} ${h1})`,
+        `oklch(${l2} ${c1} ${h2})`,
+        `oklch(${l3} ${c1} ${h3})`
+      ]
+    });
+  };
+
+  // Live SVG attributes
+  const svgAttrs = points.length > 2 && !isDrawing 
+    ? getShapeSvgAttributes(effect, 'preview')
+    : { defs: '', fill: 'transparent', stroke: 'white', filter: '', strokeWidth: '2' };
+
+  return (
+    <div className="flex flex-col md:flex-row h-full w-full bg-neutral-900 text-white overflow-hidden">
+      {/* Main Drawing Area */}
+      <div className="flex-1 relative flex flex-col items-center justify-center p-4 min-h-[50vh]">
+        <h2 className="absolute top-4 text-neutral-500 font-medium text-sm text-center">
+          {points.length === 0 ? "Draw a closed shape with your finger or mouse" : "Shape Forge"}
+        </h2>
+        
+        {/* Drawing Canvas */}
+        <div className="w-full max-w-2xl aspect-square bg-neutral-950 rounded-2xl border border-neutral-800 shadow-xl overflow-hidden relative touch-none">
+          {/* Background decoration for glassmorphism preview */}
+          {effect.type === 'glass' && points.length > 0 && (
+             <>
+               <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-pink-500 rounded-full mix-blend-screen filter blur-xl opacity-50 animate-pulse"></div>
+               <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-blue-500 rounded-full mix-blend-screen filter blur-xl opacity-50"></div>
+             </>
+          )}
+
+          <svg
+            ref={svgRef}
+            className="w-full h-full cursor-crosshair relative z-10"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerLeave={handlePointerUp}
+          >
+            {/* Inject complex SVG filters natively! */}
+            <defs dangerouslySetInnerHTML={{ __html: svgAttrs.defs }} />
+
+            {points.length > 0 && (
+              <path
+                d={generatePathString(points, !isDrawing)}
+                fill={svgAttrs.fill}
+                stroke={svgAttrs.stroke}
+                strokeWidth={isDrawing ? "3" : svgAttrs.strokeWidth}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                filter={svgAttrs.filter}
+                className={`transition-all duration-300 ${effect.type === 'glass' && !isDrawing ? 'backdrop-blur-md' : ''}`}
+              />
+            )}
+          </svg>
+        </div>
+
+        {points.length > 0 && (
+          <button 
+            onClick={clearCanvas}
+            className="absolute bottom-6 right-6 bg-neutral-800 hover:bg-neutral-700 text-white p-3 rounded-full shadow-lg transition-colors z-20"
+            title="Clear Canvas"
+          >
+            <RefreshCw size={20} />
+          </button>
+        )}
+      </div>
+
+      {/* Effects Panel */}
+      <div className="w-full md:w-80 bg-neutral-950 border-t md:border-t-0 md:border-l border-neutral-800 p-6 flex flex-col overflow-y-auto shrink-0 max-h-[50vh] md:max-h-full">
+        <h3 className="font-bold text-lg mb-4 shrink-0">Generative Tools</h3>
+        <div className="grid grid-cols-2 gap-2 mb-6 shrink-0">
+          <button onClick={() => handleGeneratePolygon(6)} className="bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 text-neutral-300 py-2 rounded-md text-xs font-bold flex flex-col items-center gap-1 transition-colors">
+            <Hexagon size={16} /> Hexagon
+          </button>
+          <button onClick={() => handleGenerateStar(5)} className="bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 text-neutral-300 py-2 rounded-md text-xs font-bold flex flex-col items-center gap-1 transition-colors">
+            <Star size={16} /> 5-Point Star
+          </button>
+          <button onClick={() => handleGenerateWaveRing()} className="bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 text-neutral-300 py-2 rounded-md text-xs font-bold flex flex-col items-center gap-1 transition-colors">
+            <Sparkles size={16} /> Wave Ring
+          </button>
+          <button onClick={handleGenerateBlob} className="bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 text-neutral-300 py-2 rounded-md text-xs font-bold flex flex-col items-center gap-1 transition-colors">
+            <Droplets size={16} /> Organic Blob
+          </button>
+        </div>
+
+        <div className="mb-6 shrink-0">
+          <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider flex items-center justify-between mb-2">
+            <span>Mandala Symmetry</span>
+            <span className="text-blue-400">{symmetry}x</span>
+          </label>
+          <input 
+            type="range" min="1" max="12" step="1" 
+            value={symmetry} 
+            onChange={(e) => setSymmetry(Number(e.target.value))}
+            className="w-full accent-blue-500" 
+          />
+          <p className="text-[10px] text-neutral-600 mt-1">Set to 2+ and draw a line on the canvas to revolve it.</p>
+        </div>
+
+        <div className="mb-6 shrink-0">
+          <label className="text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+            <Wand2 size={14} className="text-pink-500" /> AI Palette Architect
+          </label>
+          <div className="flex gap-2">
+            <input 
+              type="text" 
+              placeholder="e.g. Cyberpunk Neon" 
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleGenerateAIPalette()}
+              className="flex-1 bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-pink-500"
+            />
+            <button 
+              onClick={handleGenerateAIPalette}
+              className="bg-neutral-800 hover:bg-neutral-700 text-white px-3 py-2 rounded-md transition-colors"
+            >
+              Go
+            </button>
+          </div>
+        </div>
+
+        <div className="w-full h-px bg-neutral-800 mb-6 shrink-0"></div>
+
+        <h3 className="font-bold text-lg mb-4 shrink-0">Effect Engine</h3>
+        <EffectPanel effect={effect} onChange={setEffect} />
+        <div className="pt-4 mt-auto border-t border-neutral-800 shrink-0">
+          <button 
+            onClick={handleSave}
+            disabled={points.length < 3 || isDrawing}
+            className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-800 disabled:text-neutral-500 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg"
+          >
+            <CheckCircle2 size={20} />
+            Add to Library
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ShapeForge;

@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --color-canvas-bg: #121212;
+  --color-panel-bg: #1e1e1e;
+  --color-accent: #3b82f6;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--color-canvas-bg);
+  color: #e5e5e5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Base custom utilities for effects */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
