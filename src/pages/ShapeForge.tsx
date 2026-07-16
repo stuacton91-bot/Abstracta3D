@@ -209,9 +209,9 @@ const ShapeForge: React.FC = () => {
     : { defs: '', fill: 'transparent', stroke: 'white', filter: '', strokeWidth: '2' };
 
   return (
-    <div className="flex flex-col md:flex-row h-full w-full bg-neutral-900 text-white overflow-hidden">
+    <div className="flex flex-col md:flex-row min-h-full md:h-full w-full bg-neutral-900 text-white overflow-y-auto md:overflow-hidden">
       {/* Main Drawing Area */}
-      <div className="flex-1 relative flex flex-col items-center justify-center p-4 min-h-[50vh]">
+      <div className="w-full shrink-0 md:flex-1 relative flex flex-col items-center justify-center p-4 min-h-[400px] md:min-h-0">
         <h2 className="absolute top-4 text-neutral-500 font-medium text-sm text-center">
           {points.length === 0 ? "Draw a closed shape with your finger or mouse" : "Shape Forge"}
         </h2>
@@ -264,7 +264,7 @@ const ShapeForge: React.FC = () => {
       </div>
 
       {/* Effects Panel */}
-      <div className="w-full md:w-80 bg-neutral-950 border-t md:border-t-0 md:border-l border-neutral-800 p-6 flex flex-col overflow-y-auto shrink-0 max-h-[50vh] md:max-h-full">
+      <div className="w-full md:w-80 bg-neutral-950 border-t md:border-t-0 md:border-l border-neutral-800 p-6 flex flex-col shrink-0 md:overflow-y-auto">
         <h3 className="font-bold text-lg mb-4 shrink-0">Generative Tools</h3>
         <div className="grid grid-cols-2 gap-2 mb-6 shrink-0">
           <button onClick={() => handleGeneratePolygon(6)} className="bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 text-neutral-300 py-2 rounded-md text-xs font-bold flex flex-col items-center gap-1 transition-colors">
