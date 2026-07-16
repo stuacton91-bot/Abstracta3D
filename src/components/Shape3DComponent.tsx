@@ -39,6 +39,7 @@ export const Shape3DComponent: React.FC<Shape3DProps> = ({ canvasObj, shape, isS
     
     const cx = (minX + maxX) / 2;
     const cy = (minY + maxY) / 2;
+    const PIXELS_PER_UNIT = 100;
 
     let isNewSubpath = true;
     shape.points.forEach(p => {
@@ -47,8 +48,9 @@ export const Shape3DComponent: React.FC<Shape3DProps> = ({ canvasObj, shape, isS
         return;
       }
       // Invert Y because Three.js Y is up, Canvas Y is down
-      const px = p.x - cx;
-      const py = -(p.y - cy);
+      // Divide by PIXELS_PER_UNIT to convert Canvas Pixels to World Units
+      const px = (p.x - cx) / PIXELS_PER_UNIT;
+      const py = -(p.y - cy) / PIXELS_PER_UNIT;
       
       if (isNewSubpath) {
         s.moveTo(px, py);
@@ -192,7 +194,7 @@ export const Shape3DComponent: React.FC<Shape3DProps> = ({ canvasObj, shape, isS
     >
       <group ref={groupRef} onClick={(e) => { e.stopPropagation(); onSelect(); }}>
         <mesh ref={meshRef} castShadow receiveShadow>
-          <extrudeGeometry args={[threeShape, { depth: effectiveShape.effect.intensity * 20, bevelEnabled: true, bevelThickness: 2, bevelSize: 1, bevelSegments: 3, curveSegments: 12 }]} />
+          <extrudeGeometry args={[threeShape, { depth: effectiveShape.effect.intensity * 0.5, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.02, bevelSegments: 3, curveSegments: 12 }]} />
           {getMaterial()}
         </mesh>
       </group>
