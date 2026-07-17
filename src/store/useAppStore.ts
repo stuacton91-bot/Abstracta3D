@@ -68,6 +68,9 @@ interface AppState {
   lightSettings: LightSettings;
   setLightSettings: (updates: Partial<LightSettings>) => void;
 
+  savedSwatches: string[];
+  addSavedSwatch: (color: string) => void;
+
   history: CanvasObject[][];
   future: CanvasObject[][];
   saveHistoryState: () => void;
@@ -158,6 +161,11 @@ export const useAppStore = create<AppState>()(
         set({ lightSettings: newSettings });
       }
     },
+
+    savedSwatches: [],
+    addSavedSwatch: (color) => set((state) => ({ 
+      savedSwatches: [...new Set([color, ...state.savedSwatches])].slice(0, 10) 
+    })),
 
     history: [],
     future: [],

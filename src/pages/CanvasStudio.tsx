@@ -9,6 +9,7 @@ import { RotateCcw, Activity, Mic, MicOff, Undo2, Redo2, Camera, Sun, Lightbulb,
 import { audioAnalyzer } from '../lib/audioAnalyzer';
 import { EffectPanel } from '../components/EffectPanel';
 import { AlgorithmicBrushes } from '../components/AlgorithmicBrushes';
+import { ColorPicker } from '../components/ColorPicker';
 import { Shape3DComponent } from '../components/Shape3DComponent';
 import { createSVGDataUrl } from '../utils/svgGenerator';
 
@@ -354,12 +355,10 @@ const CanvasStudio: React.FC = () => {
           <h3 className="font-bold text-lg mb-6 shrink-0">Studio Environment</h3>
           
           <div className="mb-6 shrink-0">
-            <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3 block">Background Color</label>
-            <input 
-              type="color" 
-              value={canvasColor || '#0f0f13'} 
-              onChange={(e) => setCanvasColor(e.target.value)}
-              className="w-full h-10 rounded cursor-pointer"
+            <ColorPicker 
+              label="Background Color"
+              color={canvasColor || '#0f0f13'} 
+              onChange={setCanvasColor} 
             />
           </div>
 
@@ -387,13 +386,11 @@ const CanvasStudio: React.FC = () => {
             </div>
           </div>
 
-          <div className="mb-6 shrink-0">
-            <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3 block">Light Color</label>
-            <input 
-              type="color" 
-              value={lightSettings.color} 
-              onChange={(e) => setLightSettings({ color: e.target.value })}
-              className="w-full h-10 rounded cursor-pointer"
+          <div className="mb-6 shrink-0 z-50">
+            <ColorPicker 
+              label="Light Color"
+              color={lightSettings.color} 
+              onChange={(c) => setLightSettings({ color: c })} 
             />
           </div>
 
