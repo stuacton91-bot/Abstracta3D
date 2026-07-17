@@ -175,30 +175,36 @@ const ShapeForge: React.FC = () => {
   const handleGenerateAIPalette = () => {
     if (!prompt.trim()) return;
     
-    // Deterministic hash string -> number
     let hash = 0;
     for (let i = 0; i < prompt.length; i++) {
       hash = prompt.charCodeAt(i) + ((hash << 5) - hash);
     }
     
-    // Generate OKLCH values based on hash
-    // Lightness 0.6-0.8, Chroma 0.15-0.3, Hue 0-360
+    // Generate HSL values based on hash
     const h1 = Math.abs(hash % 360);
-    const h2 = (h1 + 120 + (hash % 30)) % 360; // Triadic ish
+    const h2 = (h1 + 120 + (hash % 30)) % 360; 
     const h3 = (h1 + 240 - (hash % 30)) % 360;
     
-    const l1 = 0.6 + (Math.abs(hash) % 20) / 100;
-    const l2 = 0.6 + (Math.abs(hash >> 1) % 20) / 100;
-    const l3 = 0.6 + (Math.abs(hash >> 2) % 20) / 100;
-
-    const c1 = 0.15 + (Math.abs(hash >> 3) % 15) / 100;
+    const s1 = 60 + (Math.abs(hash >> 1) % 40);
+    const l1 = 50 + (Math.abs(hash >> 2) % 30);
+    
+    const hslToHex = (h: number, s: number, l: number) => {
+      l /= 100;
+      const a = s * Math.min(l, 1 - l) / 100;
+      const f = (n: number) => {
+        const k = (n + h / 30) % 12;
+        const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+        return Math.round(255 * color).toString(16).padStart(2, '0');
+      };
+      return `#${f(0)}${f(8)}${f(4)}`;
+    };
     
     setEffect({
       ...effect,
       colors: [
-        `oklch(${l1} ${c1} ${h1})`,
-        `oklch(${l2} ${c1} ${h2})`,
-        `oklch(${l3} ${c1} ${h3})`
+        hslToHex(h1, s1, l1),
+        hslToHex(h2, s1, l1),
+        hslToHex(h3, s1, l1)
       ]
     });
   };
