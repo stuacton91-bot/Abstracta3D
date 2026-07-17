@@ -299,7 +299,7 @@ const CanvasStudio: React.FC = () => {
               <OrbitControls makeDefault />
               
               <EffectComposer>
-                <Bloom luminanceThreshold={0.2} luminanceSmoothing={0.9} height={300} opacity={1.5} />
+                <Bloom luminanceThreshold={1.1} luminanceSmoothing={0.9} height={300} opacity={1.5} />
                 <Noise opacity={0.02} />
                 <ChromaticAberration offset={[0.002, 0.002] as any} blendFunction={BlendFunction.NORMAL} />
               </EffectComposer>
