@@ -13,6 +13,7 @@ export const useSyncFirebase = (roomId: string | null) => {
     const libRef = ref(db, `rooms/${roomId}/library`);
     const canvasRef = ref(db, `rooms/${roomId}/canvasObjects`);
     const colorRef = ref(db, `rooms/${roomId}/canvasColor`);
+    const lightRef = ref(db, `rooms/${roomId}/lightSettings`);
 
     const unsubLib = onValue(libRef, (snapshot) => {
       const data = snapshot.val();
@@ -39,10 +40,18 @@ export const useSyncFirebase = (roomId: string | null) => {
       }
     });
 
+    const unsubLight = onValue(lightRef, (snapshot) => {
+      const settings = snapshot.val();
+      if (settings) {
+        useAppStore.setState({ lightSettings: settings });
+      }
+    });
+
     return () => {
       off(libRef, 'value', unsubLib);
       off(canvasRef, 'value', unsubCanvas);
       off(colorRef, 'value', unsubColor);
+      off(lightRef, 'value', unsubLight);
       useAppStore.setState({ roomId: null });
     };
   }, [roomId]);

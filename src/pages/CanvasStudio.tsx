@@ -5,7 +5,7 @@ import { EffectComposer, Bloom, Noise, ChromaticAberration } from '@react-three/
 import { BlendFunction } from 'postprocessing';
 import { useAppStore } from '../store/useAppStore';
 import type { CustomShape } from '../store/useAppStore';
-import { RotateCcw, Activity, Mic, MicOff, Undo2, Redo2, Camera } from 'lucide-react';
+import { RotateCcw, Activity, Mic, MicOff, Undo2, Redo2, Camera, Sun, Lightbulb, Zap } from 'lucide-react';
 import { audioAnalyzer } from '../lib/audioAnalyzer';
 import { EffectPanel } from '../components/EffectPanel';
 import { AlgorithmicBrushes } from '../components/AlgorithmicBrushes';
@@ -18,7 +18,11 @@ const ShapeThumbnail: React.FC<{ shape: CustomShape }> = ({ shape }) => {
 };
 
 const CanvasStudio: React.FC = () => {
-  const { library, canvasObjects, addCanvasObject, updateCanvasObject, removeCanvasObject, setCanvasObjects, canvasColor, setCanvasColor, undo, redo, history, future } = useAppStore();
+  const { 
+    library, canvasObjects, addCanvasObject, updateCanvasObject, removeCanvasObject, 
+    setCanvasObjects, canvasColor, setCanvasColor, undo, redo, history, future,
+    lightSettings, setLightSettings 
+  } = useAppStore();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draggedShapeId, setDraggedShapeId] = useState<string | null>(null);
@@ -210,7 +214,16 @@ const CanvasStudio: React.FC = () => {
             >
               <color attach="background" args={[canvasColor || '#0f0f13']} />
               <ambientLight intensity={0.5} />
-              <pointLight position={[10, 10, 10]} intensity={1} castShadow />
+              
+              {lightSettings.type === 'point' && (
+                <pointLight position={[10, 10, 10]} intensity={lightSettings.intensity} color={lightSettings.color} castShadow />
+              )}
+              {lightSettings.type === 'spot' && (
+                <spotLight position={[0, 10, 10]} angle={0.4} penumbra={1} intensity={lightSettings.intensity * 2} color={lightSettings.color} castShadow />
+              )}
+              {lightSettings.type === 'directional' && (
+                <directionalLight position={[10, 10, 10]} intensity={lightSettings.intensity} color={lightSettings.color} castShadow />
+              )}
               
               <Environment preset="studio" />
               
@@ -285,8 +298,9 @@ const CanvasStudio: React.FC = () => {
           />
         </div>
       ) : (
-        <div className="w-80 bg-neutral-950 border-l border-neutral-800 p-6 flex flex-col z-20 shrink-0 max-h-full">
-          <h3 className="font-bold text-lg mb-6 shrink-0">Canvas Settings</h3>
+        <div className="w-80 bg-neutral-950 border-l border-neutral-800 p-6 flex flex-col z-20 shrink-0 max-h-full overflow-y-auto">
+          <h3 className="font-bold text-lg mb-6 shrink-0">Studio Environment</h3>
+          
           <div className="mb-6 shrink-0">
             <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3 block">Background Color</label>
             <input 
@@ -294,6 +308,53 @@ const CanvasStudio: React.FC = () => {
               value={canvasColor || '#0f0f13'} 
               onChange={(e) => setCanvasColor(e.target.value)}
               className="w-full h-10 rounded cursor-pointer"
+            />
+          </div>
+
+          <div className="w-full h-px bg-neutral-800 my-4"></div>
+
+          <h4 className="font-bold mb-4 flex items-center gap-2"><Sun size={16} /> Global Lighting</h4>
+
+          <div className="mb-6 shrink-0">
+            <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3 block">Light Type</label>
+            <div className="grid grid-cols-3 gap-2">
+              {(['point', 'spot', 'directional'] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setLightSettings({ type: t })}
+                  className={`py-2 border rounded-md text-xs capitalize transition-colors flex flex-col items-center justify-center gap-1 ${
+                    lightSettings.type === t ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400' : 'bg-neutral-900 border-neutral-800 hover:bg-neutral-800 text-neutral-400'
+                  }`}
+                >
+                  {t === 'point' && <Lightbulb size={14} />}
+                  {t === 'spot' && <Zap size={14} />}
+                  {t === 'directional' && <Sun size={14} />}
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-6 shrink-0">
+            <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3 block">Light Color</label>
+            <input 
+              type="color" 
+              value={lightSettings.color} 
+              onChange={(e) => setLightSettings({ color: e.target.value })}
+              className="w-full h-10 rounded cursor-pointer"
+            />
+          </div>
+
+          <div className="mb-6 shrink-0">
+            <div className="flex justify-between mb-2">
+              <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Intensity</label>
+              <span className="text-xs text-neutral-400">{lightSettings.intensity.toFixed(1)}x</span>
+            </div>
+            <input 
+              type="range" min="0" max="5" step="0.1" 
+              value={lightSettings.intensity} 
+              onChange={(e) => setLightSettings({ intensity: parseFloat(e.target.value) })}
+              className="w-full accent-yellow-500"
             />
           </div>
         </div>

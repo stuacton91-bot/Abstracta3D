@@ -41,6 +41,12 @@ export interface CanvasObject {
   audioReactive?: boolean;
 }
 
+export interface LightSettings {
+  type: 'point' | 'spot' | 'directional';
+  color: string;
+  intensity: number;
+}
+
 interface AppState {
   roomId: string | null;
   setRoomId: (id: string | null) => void;
@@ -58,6 +64,9 @@ interface AppState {
 
   canvasColor: string;
   setCanvasColor: (color: string) => void;
+
+  lightSettings: LightSettings;
+  setLightSettings: (updates: Partial<LightSettings>) => void;
 
   history: CanvasObject[][];
   future: CanvasObject[][];
@@ -136,6 +145,17 @@ export const useAppStore = create<AppState>()(
         firebaseSet(ref(db, `rooms/${state.roomId}/canvasColor`), color);
       } else {
         set({ canvasColor: color });
+      }
+    },
+
+    lightSettings: { type: 'point', color: '#ffffff', intensity: 1 },
+    setLightSettings: (updates) => {
+      const state = get();
+      const newSettings = { ...state.lightSettings, ...updates };
+      if (state.roomId) {
+        firebaseSet(ref(db, `rooms/${state.roomId}/lightSettings`), newSettings);
+      } else {
+        set({ lightSettings: newSettings });
       }
     },
 
