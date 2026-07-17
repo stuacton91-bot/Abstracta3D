@@ -112,11 +112,44 @@ const CanvasStudio: React.FC = () => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Backspace' || e.key === 'Delete') handleDelete();
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        handleDelete();
+        return;
+      }
+      
+      if (!selectedId) return;
+      
+      // Use getState to avoid stale closures during rapid key presses
+      const currentObjs = useAppStore.getState().canvasObjects;
+      const obj = currentObjs.find(o => o.id === selectedId);
+      if (!obj) return;
+
+      // In 3D space mapped from 2D coordinates, 1 unit = 100 pixels.
+      // So moving by 10 pixels is a nice small increment.
+      const step = e.shiftKey ? 50 : 10;
+
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault();
+          handleUpdateObj(selectedId, { y: obj.y - step });
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          handleUpdateObj(selectedId, { y: obj.y + step });
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          handleUpdateObj(selectedId, { x: obj.x - step });
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          handleUpdateObj(selectedId, { x: obj.x + step });
+          break;
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedId]);
+  }, [selectedId, handleDelete, handleUpdateObj]);
 
   const selectedObj = canvasObjects.find(o => o.id === selectedId);
   const selectedShapeDef = selectedObj ? library.find(s => s.id === selectedObj.shapeId) : null;
@@ -167,9 +200,14 @@ const CanvasStudio: React.FC = () => {
           </button>
         </div>
 
-        <div className="flex-1" ref={containerRef} onDrop={handleDrop} onDragOver={(e) => e.preventDefault()} onClick={() => setSelectedId(null)}>
+        <div className="flex-1" ref={containerRef} onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
           {stageSize.width > 0 && (
-            <Canvas camera={{ position: [0, 0, 10], fov: 50 }} gl={{ preserveDrawingBuffer: true, antialias: true }} dpr={window.devicePixelRatio > 1 ? window.devicePixelRatio : 2}>
+            <Canvas 
+              camera={{ position: [0, 0, 10], fov: 50 }} 
+              gl={{ preserveDrawingBuffer: true, antialias: true }} 
+              dpr={window.devicePixelRatio > 1 ? window.devicePixelRatio : 2}
+              onPointerMissed={() => setSelectedId(null)}
+            >
               <color attach="background" args={[canvasColor || '#0f0f13']} />
               <ambientLight intensity={0.5} />
               <pointLight position={[10, 10, 10]} intensity={1} castShadow />
