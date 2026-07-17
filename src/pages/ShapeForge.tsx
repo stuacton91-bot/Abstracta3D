@@ -6,12 +6,14 @@ import { useNavigate } from 'react-router-dom';
 import { getShapeSvgAttributes, generatePathString } from '../utils/svgGenerator';
 import { palettes } from '../store/palettes';
 import { EffectPanel } from '../components/EffectPanel';
+import { GoogleGenAI } from '@google/genai';
 
 const ShapeForge: React.FC = () => {
   const [points, setPoints] = useState<Point[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
   const [symmetry, setSymmetry] = useState(1);
   const [prompt, setPrompt] = useState('');
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [effect, setEffect] = useState<ShapeEffect>({
     type: 'aberration',
     colors: palettes[0].meshStops,
@@ -172,41 +174,52 @@ const ShapeForge: React.FC = () => {
     setIsDrawing(false);
   };
 
-  const handleGenerateAIPalette = () => {
-    if (!prompt.trim()) return;
+  const handleGenerateAIPalette = async () => {
+    if (!prompt.trim() || isGeneratingAI) return;
     
-    let hash = 0;
-    for (let i = 0; i < prompt.length; i++) {
-      hash = prompt.charCodeAt(i) + ((hash << 5) - hash);
+    setIsGeneratingAI(true);
+    try {
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) {
+        alert("Gemini API key is missing. Please add VITE_GEMINI_API_KEY to your .env file.");
+        setIsGeneratingAI(false);
+        return;
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      const systemInstruction = `You are a world-class color theorist and designer. The user will give you a mood or prompt. You must reply with exactly three highly aesthetic, mathematically harmonious HEX color codes (e.g. #ff0055) that perfectly match their prompt. Return ONLY a valid JSON array of 3 strings. Example: ["#FF0055", "#00F0FF", "#39FF14"]`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+          systemInstruction,
+          responseMimeType: "application/json",
+        }
+      });
+
+      const text = response.text || "[]";
+      let colors: string[] = [];
+      try {
+        colors = JSON.parse(text);
+      } catch (e) {
+        console.error("Failed to parse Gemini response:", text);
+      }
+
+      if (Array.isArray(colors) && colors.length >= 3) {
+        setEffect({
+          ...effect,
+          colors: [colors[0], colors[1], colors[2]]
+        });
+      } else {
+        alert("The AI returned an invalid format. Please try again.");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Error generating AI palette. See console for details.");
+    } finally {
+      setIsGeneratingAI(false);
     }
-    
-    // Generate HSL values based on hash
-    const h1 = Math.abs(hash % 360);
-    const h2 = (h1 + 120 + (hash % 30)) % 360; 
-    const h3 = (h1 + 240 - (hash % 30)) % 360;
-    
-    const s1 = 60 + (Math.abs(hash >> 1) % 40);
-    const l1 = 50 + (Math.abs(hash >> 2) % 30);
-    
-    const hslToHex = (h: number, s: number, l: number) => {
-      l /= 100;
-      const a = s * Math.min(l, 1 - l) / 100;
-      const f = (n: number) => {
-        const k = (n + h / 30) % 12;
-        const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-        return Math.round(255 * color).toString(16).padStart(2, '0');
-      };
-      return `#${f(0)}${f(8)}${f(4)}`;
-    };
-    
-    setEffect({
-      ...effect,
-      colors: [
-        hslToHex(h1, s1, l1),
-        hslToHex(h2, s1, l1),
-        hslToHex(h3, s1, l1)
-      ]
-    });
   };
 
   // Live SVG attributes
@@ -316,9 +329,10 @@ const ShapeForge: React.FC = () => {
             />
             <button 
               onClick={handleGenerateAIPalette}
-              className="bg-neutral-800 hover:bg-neutral-700 text-white px-3 py-2 rounded-md transition-colors"
+              disabled={isGeneratingAI}
+              className="bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 text-white px-3 py-2 rounded-md transition-colors"
             >
-              Go
+              {isGeneratingAI ? '...' : 'Go'}
             </button>
           </div>
         </div>
