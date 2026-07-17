@@ -5,7 +5,7 @@ import { EffectComposer, Bloom, Noise, ChromaticAberration } from '@react-three/
 import { BlendFunction } from 'postprocessing';
 import { useAppStore } from '../store/useAppStore';
 import type { CustomShape } from '../store/useAppStore';
-import { RotateCcw, Activity, Mic, MicOff, Undo2, Redo2, Camera, Sun, Lightbulb, Zap } from 'lucide-react';
+import { RotateCcw, Activity, Mic, MicOff, Undo2, Redo2, Camera, Sun, Lightbulb, Zap, Upload, Save } from 'lucide-react';
 import { audioAnalyzer } from '../lib/audioAnalyzer';
 import { EffectPanel } from '../components/EffectPanel';
 import { AlgorithmicBrushes } from '../components/AlgorithmicBrushes';
@@ -114,6 +114,51 @@ const CanvasStudio: React.FC = () => {
     }, 150);
   };
 
+  const handleExportProject = () => {
+    const data = JSON.stringify({
+      library,
+      canvasObjects,
+      canvasColor,
+      lightSettings
+    });
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = `abstracta3d-project-${Date.now()}.abstr`;
+    link.href = url;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportProject = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        const data = JSON.parse(content);
+        
+        if (data.library && data.canvasObjects) {
+          useAppStore.getState().setLibrary(data.library);
+          handleSetAllObjs(data.canvasObjects);
+          if (data.canvasColor) setCanvasColor(data.canvasColor);
+          if (data.lightSettings) setLightSettings(data.lightSettings);
+        } else {
+          alert('Invalid project file format.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Error reading project file.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // Reset file input
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Backspace' || e.key === 'Delete') {
@@ -192,6 +237,13 @@ const CanvasStudio: React.FC = () => {
           <div className="w-px h-6 bg-neutral-600 mx-1"></div>
           
           <button onClick={() => { if(window.confirm('Clear canvas?')) { handleSetAllObjs([]); setSelectedId(null); } }} className="p-2 text-red-500 hover:text-red-400"><RotateCcw size={18} /></button>
+          <div className="w-px h-6 bg-neutral-600 mx-1"></div>
+          
+          <button onClick={handleExportProject} className="p-2 text-neutral-400 hover:text-white" title="Save Project"><Save size={18} /></button>
+          <label className="p-2 text-neutral-400 hover:text-white cursor-pointer" title="Load Project">
+            <Upload size={18} />
+            <input type="file" accept=".abstr" className="hidden" onChange={handleImportProject} />
+          </label>
           <div className="w-px h-6 bg-neutral-600 mx-1"></div>
           
           <button onClick={handleEnableMic} className={`p-2 transition-colors ${micEnabled ? 'text-pink-400' : 'text-neutral-400 hover:text-white'}`}>
