@@ -5,7 +5,7 @@ import { EffectComposer, Bloom, Noise, ChromaticAberration } from '@react-three/
 import { BlendFunction } from 'postprocessing';
 import { useAppStore } from '../store/useAppStore';
 import type { CustomShape } from '../store/useAppStore';
-import { RotateCcw, Activity, Mic, MicOff, Undo2, Redo2 } from 'lucide-react';
+import { RotateCcw, Activity, Mic, MicOff, Undo2, Redo2, Camera } from 'lucide-react';
 import { audioAnalyzer } from '../lib/audioAnalyzer';
 import { EffectPanel } from '../components/EffectPanel';
 import { AlgorithmicBrushes } from '../components/AlgorithmicBrushes';
@@ -88,6 +88,28 @@ const CanvasStudio: React.FC = () => {
     setSelectedId(null);
   };
 
+  const handleExportImage = () => {
+    // Deselect objects so PivotControls disappear before capture
+    const previousSelection = selectedId;
+    setSelectedId(null);
+    
+    // Wait for the next frame so the UI update (deselection) renders
+    setTimeout(() => {
+      const canvas = containerRef.current?.querySelector('canvas');
+      if (canvas) {
+        const dataUrl = canvas.toDataURL('image/png', 1.0);
+        const link = document.createElement('a');
+        link.download = `abstracta3d-render-${Date.now()}.png`;
+        link.href = dataUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      // Restore selection
+      if (previousSelection) setSelectedId(previousSelection);
+    }, 150);
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Backspace' || e.key === 'Delete') handleDelete();
@@ -138,11 +160,16 @@ const CanvasStudio: React.FC = () => {
           <button onClick={handleEnableMic} className={`p-2 transition-colors ${micEnabled ? 'text-pink-400' : 'text-neutral-400 hover:text-white'}`}>
             {micEnabled ? <Mic size={18} /> : <MicOff size={18} />}
           </button>
+          <div className="w-px h-6 bg-neutral-600 mx-1"></div>
+          
+          <button onClick={handleExportImage} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-full text-sm font-medium ml-2">
+            <Camera size={16} /> Render HD
+          </button>
         </div>
 
         <div className="flex-1" ref={containerRef} onDrop={handleDrop} onDragOver={(e) => e.preventDefault()} onClick={() => setSelectedId(null)}>
           {stageSize.width > 0 && (
-            <Canvas camera={{ position: [0, 0, 10], fov: 50 }}>
+            <Canvas camera={{ position: [0, 0, 10], fov: 50 }} gl={{ preserveDrawingBuffer: true, antialias: true }} dpr={window.devicePixelRatio > 1 ? window.devicePixelRatio : 2}>
               <color attach="background" args={[canvasColor || '#0f0f13']} />
               <ambientLight intensity={0.5} />
               <pointLight position={[10, 10, 10]} intensity={1} castShadow />
