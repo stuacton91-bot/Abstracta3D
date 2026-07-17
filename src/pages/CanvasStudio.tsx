@@ -265,19 +265,19 @@ const CanvasStudio: React.FC = () => {
               onPointerMissed={() => setSelectedId(null)}
             >
               <color attach="background" args={[canvasColor || '#0f0f13']} />
-              <ambientLight intensity={lightSettings.intensity * 0.2} />
+              <ambientLight intensity={lightSettings.intensity * 0.5} color={lightSettings.color} />
               
               {lightSettings.type === 'point' && (
-                <pointLight position={[5, 5, 5]} intensity={lightSettings.intensity * 100} color={lightSettings.color} castShadow />
+                <pointLight position={[5, 5, 5]} intensity={lightSettings.intensity * 500} color={lightSettings.color} castShadow />
               )}
               {lightSettings.type === 'spot' && (
-                <spotLight position={[0, 10, 5]} angle={0.4} penumbra={1} intensity={lightSettings.intensity * 200} color={lightSettings.color} castShadow />
+                <spotLight position={[0, 10, 5]} angle={0.4} penumbra={1} intensity={lightSettings.intensity * 1000} color={lightSettings.color} castShadow />
               )}
               {lightSettings.type === 'directional' && (
-                <directionalLight position={[5, 5, 5]} intensity={lightSettings.intensity * 2} color={lightSettings.color} castShadow />
+                <directionalLight position={[5, 5, 5]} intensity={lightSettings.intensity * 5} color={lightSettings.color} castShadow />
               )}
               
-              <Environment preset="studio" environmentIntensity={0.5} />
+              <Environment preset="studio" environmentIntensity={0.1} />
               
               <ContactShadows position={[0, -5, 0]} opacity={0.4} scale={50} blur={2} far={10} />
 

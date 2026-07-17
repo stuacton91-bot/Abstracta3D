@@ -146,7 +146,7 @@ export const Shape3DComponent: React.FC<Shape3DProps> = ({ canvasObj, shape, isS
         return (
           <meshPhysicalMaterial 
             color={baseColor} emissive={secondaryColor} emissiveIntensity={0.2}
-            metalness={1} roughness={0} clearcoat={1} clearcoatRoughness={0.1}
+            metalness={0.9} roughness={0.15} clearcoat={1} clearcoatRoughness={0.1}
             iridescence={type === 'holographic' ? 1 : 0}
           />
         );
@@ -169,9 +169,7 @@ export const Shape3DComponent: React.FC<Shape3DProps> = ({ canvasObj, shape, isS
       case 'noise':
       default:
         return (
-          <meshStandardMaterial 
-            color={baseColor} roughness={0.6} metalness={0.2} 
-          />
+          <meshStandardMaterial color={baseColor} roughness={Math.max(0.15, 1 - opacity)} metalness={0.5} />
         );
     }
   };
